@@ -67,3 +67,97 @@
     @apply bg-background text-foreground;
   }
 }
+
+.axolotl-text {
+  font-family: 'Oswald', sans-serif; /* Strong, impactful font */
+  font-size: 30px;
+  color: transparent;
+  -webkit-text-stroke: 2px #333; /* Outline color and thickness */
+  letter-spacing: 4px;
+  margin: 10px;
+}
+.chat-item {
+  border-bottom: 1px solid #9e9f9f; /* Light gray line */
+  padding: 10px 0; /* Add some padding for spacing */
+  border-radius: 0;
+}
+/* index.css */
+
+.icon-container {
+  display: flex;                /* Use Flexbox to arrange children in a row */
+  align-items: center;          /* Center items vertically within the container */
+  gap: 10px;                    /* Space between the icons */
+}
+
+.icon {
+  width: 20px;                  /* Set the width of the icons */
+  height: 20px;                 /* Set the height of the icons */
+}/* Ensure the modal appears on top of everything */
+/* Modal overlay to cover the entire viewport */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5); /* Semi-transparent background */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000; /* Ensure it's on top of other elements */
+}
+
+/* Modal container */
+.modal {
+  background-color: white;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  z-index: 1001; /* Ensure it's above the overlay */
+  width: 300px;
+}
+
+/* Modal content styling */
+.modal-content {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+/* Input field styling */
+.modal-content input {
+  width: 100%; /* Full width input field */
+  padding: 10px;
+  box-sizing: border-box; /* Ensure padding doesn't affect width */
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+/* Modal buttons */
+.modal-buttons {
+  display: flex;
+  justify-content: space-between;
+}
+
+.modal-buttons button {
+  padding: 10px 20px;
+  cursor: pointer;
+  border: none;
+  border-radius: 4px;
+  background-color: #007bff; /* Blue button background */
+  color: white;
+}
+
+.modal-buttons button + button {
+  background-color: #6c757d; /* Gray button background */
+}
+
+/* Button to open the modal */
+.open-modal-btn {
+  padding: 10px 20px;
+  cursor: pointer;
+  border: none;
+  border-radius: 4px;
+  background-color: #28a745; /* Green button background */
+  color: white;
+}

@@ -48,6 +48,9 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { MessageRequest } from "./MessageRequest.tsx";
 import { MessageResponse } from "./MessageResponse.tsx";
 import { UploadFile } from "./UploadFile";
+import { MySideBar } from "./MySideBar.tsx";
+import './index.css'
+import { Sidebar } from "flowbite-react";
 // Function to compare two arrays
 function areArraysNotEqual(arr1, arr2) {
   // Check if lengths are different
@@ -70,15 +73,14 @@ export function Dashboard() {
   const [numOfResults, setNumOfResults] = useState(1);
   const [chunks, setChunk] = useState(500);
   const [question, setQuestion] = useState("");
-  const [message, setMessage] = useState("");
   const [responseMessage, setResponseMessage] = useState("");
   const [submittedMessage, setSubmittedMessage] = useState("");
   const [selectedFile, setSelectedFile] = useState(null);
   const [PreFileName, setPreFileName] = useState([]);
   const [files, setFiles] = useState([]);
   const [fileList, setFileList] = useState([]);
-  const [send, setSend] = useState(0);
   const [messagesList, setMessagesList] = useState([]);
+  const [chats, setChats] = useState([]); 
   let responseContent;
   let mes;
   const api = axios.create({
@@ -99,11 +101,33 @@ export function Dashboard() {
     setQuestion(e.target.value);
     console.log(question);
   };
+  useEffect(() => {
+    const fetchChats = async () => {
+      try {
+        const chatRequest = await api.get("/user/ahmadali/chats");
+        setChats(chatRequest.data.chats); // Store the chat titles and IDs
+        
+        console.log("Fetched chats:", chatRequest.data.chats[0].title);
+      } catch (error) {
+        console.error("Error fetching chats:", error);
+      }
+    };
+
+    fetchChats();
+  }, []);
+
+  const handleSelectChat = (id) => {
+    setSelectedChatId(id);
+    console.log("Selected chat ID:", id);
+    // You can use this ID for further actions, like loading the chat messages
+  };
 
 
   const handleFormSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const fileArray = Array.from(files);
+
+
     const newMessage = { type: "request", content: question };
     setMessagesList((prevMessages) => [...prevMessages, newMessage]);
 
@@ -291,7 +315,12 @@ const queryResponse = await api.post("/api/query/", {
       </aside>
       <div className="flex flex-col">
         <header className="sticky top-0 z-10 flex h-[57px] items-center gap-1 border-b bg-background px-4">
-          <h1 className="text-xl font-semibold">Playground</h1>
+        <img 
+        src="src/assets/DALL·E 2024-08-25 01.06.39 - A minimalistic app logo featuring an Axolotl, illustrated in black and white. The Axolotl is stylized with simple, clean lines and is shown reading a .jpg"
+         alt="" style={{ width: '40px', height: '40px' }} />
+          <div className="axolotl-text">Axolotl</div>
+        
+      
           <Drawer>
             <DrawerTrigger asChild>
               <Button variant="ghost" size="icon" className="md:hidden">
@@ -429,26 +458,13 @@ const queryResponse = await api.post("/api/query/", {
                       </ul>
                     </div>
 
-                    {/* <div className="{primaryCardClasses}">
-                      <label
-                        htmlFor="file-upload"
-                        class="cursor-pointer bg-secondary text-secondary-foreground hover:bg-secondary/80 px-4 py-2 rounded-lg mt-4"
-                      >
-                        {" "}
-                        Upload File{" "}
-                      </label>
-                      <input
-                        id="file-upload"
-                        type="file"
-                        class="hidden"
-                        onChange={handleFileChange}
-                        
-                      />
-                    </div> */}
+                   
                   </div>
                 </fieldset>
               </form>
             </DrawerContent>
+
+
           </Drawer>
           <Button
             variant="outline"
@@ -465,82 +481,104 @@ const queryResponse = await api.post("/api/query/", {
             x-chunk="dashboard-03-chunk-0"
           >
             <form className="grid w-full items-start gap-6">
-              <fieldset className="grid gap-6 rounded-lg border p-4">
-                <legend className="-ml-1 px-1 text-sm font-medium">
-                  Settings
-                </legend>
-                <div className="grid gap-3">
-                  <Label htmlFor="model">Model</Label>
-                  <Select>
-                    <SelectTrigger
-                      id="model"
-                      className="items-start [&_[data-description]]:hidden"
-                    >
-                      <SelectValue placeholder="Select a model" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="genesis">
-                        <div className="flex items-start gap-3 text-muted-foreground">
-                          <Rabbit className="size-5" />
-                          <div className="grid gap-0.5">
-                            <p>
-                              Neural{" "}
-                              <span className="font-medium text-foreground">
-                                Genesis
-                              </span>
-                            </p>
-                            <p className="text-xs" data-description>
-                              Our fastest model for general use cases.
-                            </p>
-                          </div>
-                        </div>
-                      </SelectItem>
-                      <SelectItem value="explorer">
-                        <div className="flex items-start gap-3 text-muted-foreground">
-                          <Bird className="size-5" />
-                          <div className="grid gap-0.5">
-                            <p>
-                              Neural{" "}
-                              <span className="font-medium text-foreground">
-                                Explorer
-                              </span>
-                            </p>
-                            <p className="text-xs" data-description>
-                              Performance and speed for efficiency.
-                            </p>
-                          </div>
-                        </div>
-                      </SelectItem>
-                      <SelectItem value="quantum">
-                        <div className="flex items-start gap-3 text-muted-foreground">
-                          <Turtle className="size-5" />
-                          <div className="grid gap-0.5">
-                            <p>
-                              Neural{" "}
-                              <span className="font-medium text-foreground">
-                                Quantum
-                              </span>
-                            </p>
-                            <p className="text-xs" data-description>
-                              The most powerful model for complex computations.
-                            </p>
-                          </div>
-                        </div>
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="grid gap-3">
-                  <Label htmlFor="length-of-chunk">length of chunk</Label>
-                  <Input
-                    id="length-of-chunk"
-                    type="number"
-                    placeholder="500"
-                    onChange={handleInputChunks}
-                  />
-                </div>
+            <MySideBar initialChats={chats} onSelectChat={handleSelectChat}></MySideBar>
+            </form>
+          </div>
 
-                <div className="grid gap-3">
+          <div className="relative flex h-full max-h-[85vh] flex-col rounded-xl bg-muted/50 p-4 lg:col-span-2">
+            <ScrollArea className="h-full w-full rounded-md  overflow-auto">
+              <Badge variant="outline" className=" left-3 top-3  items-end ">
+              <Drawer>
+            <DrawerTrigger asChild>
+              <Button variant="ghost" size="icon" >
+                <Settings className="size-4" />
+                <span className="sr-only">Settings</span>
+              </Button>
+            </DrawerTrigger>
+            <DrawerContent className="max-h-[80vh]">
+              <DrawerHeader>
+                <DrawerTitle>Configuration</DrawerTitle>
+                <DrawerDescription>
+                  Configure the settings for the model and messages.
+                </DrawerDescription>
+              </DrawerHeader>
+              <form className="grid w-full items-start gap-6 overflow-auto p-4 pt-0">
+                <fieldset className="grid gap-6 rounded-lg border p-4">
+                  <legend className="-ml-1 px-1 text-sm font-medium">
+                    Settings
+                  </legend>
+                  <div className="grid gap-3">
+                    <Label htmlFor="model">Model</Label>
+                    <Select>
+                      <SelectTrigger
+                        id="model"
+                        className="items-start [&_[data-description]]:hidden"
+                      >
+                        <SelectValue placeholder="Select a model" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="genesis">
+                          <div className="flex items-start gap-3 text-muted-foreground">
+                            <Rabbit className="size-5" />
+                            <div className="grid gap-0.5">
+                              <p>
+                                Neural{" "}
+                                <span className="font-medium text-foreground">
+                                  Genesis
+                                </span>
+                              </p>
+                              <p className="text-xs" data-description>
+                                Our fastest model for general use cases.
+                              </p>
+                            </div>
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="explorer">
+                          <div className="flex items-start gap-3 text-muted-foreground">
+                            <Bird className="size-5" />
+                            <div className="grid gap-0.5">
+                              <p>
+                                Neural{" "}
+                                <span className="font-medium text-foreground">
+                                  Explorer
+                                </span>
+                              </p>
+                              <p className="text-xs" data-description>
+                                Performance and speed for efficiency.
+                              </p>
+                            </div>
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="quantum">
+                          <div className="flex items-start gap-3 text-muted-foreground">
+                            <Turtle className="size-5" />
+                            <div className="grid gap-0.5">
+                              <p>
+                                Neural{" "}
+                                <span className="font-medium text-foreground">
+                                  Quantum
+                                </span>
+                              </p>
+                              <p className="text-xs" data-description>
+                                The most powerful model for complex
+                                computations.
+                              </p>
+                            </div>
+                          </div>
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="grid gap-3">
+                    <Label htmlFor="length-of-chunk">length of chunk</Label>
+                    <Input
+                      id="length-of-chunk"
+                      type="number"
+                      placeholder="500"
+                      onChange={handleInputChunks}
+                    />
+                  </div>
+
                   <Label htmlFor="number-of-close-results">
                     number of close results
                   </Label>
@@ -550,67 +588,51 @@ const queryResponse = await api.post("/api/query/", {
                     placeholder="1"
                     onChange={handleInputNumOfResults}
                   />
-                </div>
-              </fieldset>
-              <fieldset className="grid gap-6 rounded-lg border p-4">
-                <legend className="-ml-1 px-1 text-sm font-medium">
-                  Messages
-                </legend>
-                <div className="grid gap-3">
-                  <Label htmlFor="role">Role</Label>
-                  <Select defaultValue="system">
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select a role" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="system">System</SelectItem>
-                      <SelectItem value="user">User</SelectItem>
-                      <SelectItem value="assistant">Assistant</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="grid gap-3">
-                  <Label htmlFor="content">Content</Label>
-                  <FileUploader
-                    setFiles={setFiles}
-                    setFileList={setFileList}
-                  ></FileUploader>
-                  <div className="mt-4">
-                    <ul className="overflow-x-auto">
-                      {fileList.map((fileName, index) => (
-                        <li
-                          key={index}
-                          className="list-none p-0 m-0 flex flex-wrap w-20"
-                        >
-                          {fileName}
-                        </li>
-                      ))}
-                    </ul>
+                </fieldset>
+                <fieldset className="grid gap-6 rounded-lg border p-4">
+                  <legend className="-ml-1 px-1 text-sm font-medium">
+                    Messages
+                  </legend>
+                  <div className="grid gap-3">
+                    <Label htmlFor="role">Role</Label>
+                    <Select defaultValue="system">
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select a role" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="system">System</SelectItem>
+                        <SelectItem value="user">User</SelectItem>
+                        <SelectItem value="assistant">Assistant</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
-                  {/* <div className="{primaryCardClasses}">
-                    <label
-                      htmlFor="file-upload"
-                      class="cursor-pointer bg-secondary text-secondary-foreground hover:bg-secondary/80 px-4 py-2 rounded-lg mt-4"
-                    >
-                      {" "}
-                      Upload File{" "}
-                    </label>
-                    <input
-                      id="file-upload"
-                      type="file"
-                      class="hidden"
-                      onChange={handleFileChange}
-                    />
-                  </div> */}
-                </div>
-              </fieldset>
-            </form>
-          </div>
+                  <div className="grid gap-3">
+                    <Label htmlFor="content">Content</Label>
+                    <FileUploader
+                      setFiles={setFiles}
+                      setFileList={setFileList}
+                    ></FileUploader>
+                    <div className="mt-4">
+                      <ul className="overflow-x-auto">
+                        {fileList.map((fileName, index) => (
+                          <li
+                            key={index}
+                            className="list-none p-0 m-0 flex flex-wrap w-20"
+                          >
+                            {fileName}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
 
-          <div className="relative flex h-full max-h-[85vh] flex-col rounded-xl bg-muted/50 p-4 lg:col-span-2">
-            <ScrollArea className="h-full w-full rounded-md  overflow-auto">
-              <Badge variant="outline" className=" left-3 top-3  items-end ">
-                Output
+                   
+                  </div>
+                </fieldset>
+              </form>
+            </DrawerContent>
+
+
+          </Drawer>
               </Badge>
               {messagesList.map((msg, index) =>
                 msg.type === "request" ? (
