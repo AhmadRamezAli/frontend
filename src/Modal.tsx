@@ -4,7 +4,6 @@ import axios from 'axios';
 
 export function Modal({ isOpen, setOpen }) {
   const [chatName, setChatName] = useState('');
-
   const api = axios.create({
     baseURL: "http://127.0.0.1:8000",
   });
@@ -14,15 +13,17 @@ export function Modal({ isOpen, setOpen }) {
 
     if (true) {
       try {
+      
         // Send the request to the API
         const queryResponse = await api.post("/chat/add/", {
           title: chatName,
           created_at: new Date().toISOString(),
-          participants: ["ahmadali"],  // Ensure participants is a list
+          
         }, {
           headers: {
-            "Content-Type": "application/json",
+            Authorization: `bearer ${sessionStorage.getItem("token")}`, // Add the token to the request headers
           },
+        
         });
 
         const newChat = queryResponse.data;

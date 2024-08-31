@@ -15,6 +15,7 @@ import {
   SquareUser,
   Triangle,
   Turtle,
+  MessageSquareText
 } from "lucide-react";
 import { FileUploader } from "./FileUploader";
 import { Badge } from "@/components/ui/badge";
@@ -51,6 +52,8 @@ import { UploadFile } from "./UploadFile";
 import { MySideBar } from "./MySideBar.tsx";
 import './index.css'
 import { Sidebar } from "flowbite-react";
+import{ErrorModal} from './ErrorModal.tsx';
+import { useNavigate } from 'react-router-dom';
 // Function to compare two arrays
 function areArraysNotEqual(arr1, arr2) {
   // Check if lengths are different
@@ -71,6 +74,7 @@ function areArraysNotEqual(arr1, arr2) {
 
 export function Dashboard() {
   const [numOfResults, setNumOfResults] = useState(1);
+  const navigate = useNavigate();
   const [chunks, setChunk] = useState(500);
   const [question, setQuestion] = useState("");
   const [responseMessage, setResponseMessage] = useState("");
@@ -81,8 +85,12 @@ export function Dashboard() {
   const [fileList, setFileList] = useState([]);
   const [messagesList, setMessagesList] = useState([]);
   const [chats, setChats] = useState([]); 
+  const [chatId, setChatId]=useState('');
+  const [showErrorModal, setShowErrorModal] = useState(false);
+  const [prefile,setPrefile]=useState([]);
+  const[title,setTitle]=useState('');
   let responseContent;
-  let mes;
+
   const api = axios.create({
     baseURL: "http://127.0.0.1:8000",
   });
@@ -100,102 +108,147 @@ export function Dashboard() {
   const handleQuestion = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setQuestion(e.target.value);
     console.log(question);
-  };
+  }; 
   useEffect(() => {
     const fetchChats = async () => {
       try {
-        const chatRequest = await api.get("/user/ahmadali/chats");
+        const chatRequest = await api.get("/user/chats", {
+          headers: {
+            Authorization: `bearer ${sessionStorage.getItem("token")}`, // Add the token to the request headers
+          },
+        });
+        console.log(chatRequest);
         setChats(chatRequest.data.chats); // Store the chat titles and IDs
         
         console.log("Fetched chats:", chatRequest.data.chats[0].title);
       } catch (error) {
-        console.error("Error fetching chats:", error);
+        
       }
     };
 
     fetchChats();
   }, []);
 
-  const handleSelectChat = (id) => {
-    setSelectedChatId(id);
-    console.log("Selected chat ID:", id);
-    // You can use this ID for further actions, like loading the chat messages
+  const handleSelectChat = (selectedChat) => {
+    console.log(selectedChat);
+    setMessagesList(selectedChat['messages']);
+    setChunk(selectedChat['chunks']);
+    setNumOfResults(selectedChat['numofresults']);
+    setFileList(selectedChat['fileName']);
+    setChatId(selectedChat['_id']);
+    setTitle(selectedChat['title']);
+    // Update messagesList with messages from the selected chat
   };
 
+const handleLogOut=()=>{
+sessionStorage.clear("token");
+navigate('/');
+};
 
-  const handleFormSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+  const updateChat = async (event) => {
     event.preventDefault();
     const fileArray = Array.from(files);
-
-
-    const newMessage = { type: "request", content: question };
-    setMessagesList((prevMessages) => [...prevMessages, newMessage]);
-
-    if (!files.length) {
+       if (!files.length) {
       alert("Please select a file first.");
       return;
     }
-
+    
     console.log(
       "Selected files:",
       fileArray.map((file) => file.name)
     );
-    setQuestion("");
-
-    // Check if the current file selection includes a new file
+        // Check if the current file selection includes a new file
     const newFiles = fileArray.filter((file) => file.name !== PreFileName);
     const fileNames = fileArray.map((file) => file.name);
     console.log(areArraysNotEqual(fileNames,PreFileName));
+    
+    try {
+      console.log(chunks);
+      console.log(numOfResults);
+      const uploadResponse = await api.post(`/chat/${chatId}/update`, {
+        chunks:chunks,
+        numofresults:numOfResults
+      }, {
+        headers: {
+          Authorization: `bearer ${sessionStorage.getItem("token")}`,
+        },
+      });
+
+      console.log("Files uploaded successfully:", uploadResponse.data);
+      
+  } catch (error) {
+    setShowErrorModal(true);
+        return;
+      }
+  
     if (areArraysNotEqual(fileNames,PreFileName)) {
-      try {
-        console.log("Uploading new files...");
+    try {
+      console.log("Uploading new files...");
 
         const formData = new FormData();
         newFiles.forEach((file) => formData.append("files", file));
 
-        const uploadResponse = await api.post("/api/uploadfile/", formData, {
+        const uploadResponse = await api.post(`/chat/${chatId}/updatefile`, formData, {
           headers: {
             "Content-Type": "multipart/form-data",
+            Authorization: `bearer ${sessionStorage.getItem("token")}`,
           },
         });
 
         console.log("Files uploaded successfully:", uploadResponse.data);
-        const fileNamesString = fileArray.map(file => file.name).join(", ");
-        setPreFileName(fileNamesString.split(", ").map(name => name.trim()));
-      } catch (error) {
-        console.error("Error uploading files:", error);
-        return;
+        
+    } catch (error) {
+      setShowErrorModal(true);
+          return;
+        }
       }
-    }
-
-
-    // Perform the query
-    try {
       
-const queryResponse = await api.post("/api/query/", {
-  chunks: chunks,
-  numofresults: numOfResults,
-  question: question,
-  filepaths: fileNames, // Send as an array of strings
+
+  };
+  
+
+
+  const handleFormSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setQuestion("");
+    
+    try {
+      setMessagesList((prevMessages) => [
+        ...prevMessages,
+        { content: question, message_type: "request" }
+      ]);
+      
+const queryResponse = await api.post(`/chat/${chatId}/add_message`, {
+  
+  // Send as an array of strings
+  content:question,
+  message_type:"request",
+  message_time: new Date(),
+
 }, {
   headers: {
-      "Content-Type": "application/json",
+    Authorization: `bearer ${sessionStorage.getItem("token")}`,
   },
 });
     
-      const responseContent = queryResponse.data.message;
-      setResponseMessage(responseContent);
+      // const responseContent = queryResponse.data.message;
+      // setResponseMessage(responseContent);
 
-      const newResponse = { type: "response", content: responseContent };
-      setMessagesList((prevMessages) => [...prevMessages, newResponse]);
+      // const newResponse = { type: "response", content: responseContent };
+      setMessagesList((prevMessages) => [
+        ...prevMessages,
+        { content: queryResponse.data.content, message_type: "response" }
+      ]);
 
       console.log("Query response:", queryResponse);
     } catch (error) {
-      console.error("Error sending message:", error);
+      setShowErrorModal(true);
     }
   };
 
   return (
+    <>
+    {showErrorModal&&<ErrorModal/>}
     <div className="grid h-screen w-full pl-[56px]">
       <aside className="inset-y fixed  left-0 z-20 flex h-full flex-col border-r">
         <div className="border-b p-2">
@@ -324,145 +377,13 @@ const queryResponse = await api.post("/api/query/", {
           <Drawer>
             <DrawerTrigger asChild>
               <Button variant="ghost" size="icon" className="md:hidden">
-                <Settings className="size-4" />
+                <MessageSquareText className="size-8 " />
                 <span className="sr-only">Settings</span>
               </Button>
             </DrawerTrigger>
             <DrawerContent className="max-h-[80vh]">
-              <DrawerHeader>
-                <DrawerTitle>Configuration</DrawerTitle>
-                <DrawerDescription>
-                  Configure the settings for the model and messages.
-                </DrawerDescription>
-              </DrawerHeader>
-              <form className="grid w-full items-start gap-6 overflow-auto p-4 pt-0">
-                <fieldset className="grid gap-6 rounded-lg border p-4">
-                  <legend className="-ml-1 px-1 text-sm font-medium">
-                    Settings
-                  </legend>
-                  <div className="grid gap-3">
-                    <Label htmlFor="model">Model</Label>
-                    <Select>
-                      <SelectTrigger
-                        id="model"
-                        className="items-start [&_[data-description]]:hidden"
-                      >
-                        <SelectValue placeholder="Select a model" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="genesis">
-                          <div className="flex items-start gap-3 text-muted-foreground">
-                            <Rabbit className="size-5" />
-                            <div className="grid gap-0.5">
-                              <p>
-                                Neural{" "}
-                                <span className="font-medium text-foreground">
-                                  Genesis
-                                </span>
-                              </p>
-                              <p className="text-xs" data-description>
-                                Our fastest model for general use cases.
-                              </p>
-                            </div>
-                          </div>
-                        </SelectItem>
-                        <SelectItem value="explorer">
-                          <div className="flex items-start gap-3 text-muted-foreground">
-                            <Bird className="size-5" />
-                            <div className="grid gap-0.5">
-                              <p>
-                                Neural{" "}
-                                <span className="font-medium text-foreground">
-                                  Explorer
-                                </span>
-                              </p>
-                              <p className="text-xs" data-description>
-                                Performance and speed for efficiency.
-                              </p>
-                            </div>
-                          </div>
-                        </SelectItem>
-                        <SelectItem value="quantum">
-                          <div className="flex items-start gap-3 text-muted-foreground">
-                            <Turtle className="size-5" />
-                            <div className="grid gap-0.5">
-                              <p>
-                                Neural{" "}
-                                <span className="font-medium text-foreground">
-                                  Quantum
-                                </span>
-                              </p>
-                              <p className="text-xs" data-description>
-                                The most powerful model for complex
-                                computations.
-                              </p>
-                            </div>
-                          </div>
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="grid gap-3">
-                    <Label htmlFor="length-of-chunk">length of chunk</Label>
-                    <Input
-                      id="length-of-chunk"
-                      type="number"
-                      placeholder="500"
-                      onChange={handleInputChunks}
-                    />
-                  </div>
-
-                  <Label htmlFor="number-of-close-results">
-                    number of close results
-                  </Label>
-                  <Input
-                    id="number-of-close-results"
-                    type="number"
-                    placeholder="1"
-                    onChange={handleInputNumOfResults}
-                  />
-                </fieldset>
-                <fieldset className="grid gap-6 rounded-lg border p-4">
-                  <legend className="-ml-1 px-1 text-sm font-medium">
-                    Messages
-                  </legend>
-                  <div className="grid gap-3">
-                    <Label htmlFor="role">Role</Label>
-                    <Select defaultValue="system">
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select a role" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="system">System</SelectItem>
-                        <SelectItem value="user">User</SelectItem>
-                        <SelectItem value="assistant">Assistant</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="grid gap-3">
-                    <Label htmlFor="content">Content</Label>
-                    <FileUploader
-                      setFiles={setFiles}
-                      setFileList={setFileList}
-                    ></FileUploader>
-                    <div className="mt-4">
-                      <ul className="overflow-x-auto">
-                        {fileList.map((fileName, index) => (
-                          <li
-                            key={index}
-                            className="list-none p-0 m-0 flex flex-wrap w-20"
-                          >
-                            {fileName}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-
-                   
-                  </div>
-                </fieldset>
-              </form>
-            </DrawerContent>
+            <MySideBar initialChats={chats} onSelectChat={handleSelectChat} ></MySideBar>
+                          </DrawerContent>
 
 
           </Drawer>
@@ -470,9 +391,9 @@ const queryResponse = await api.post("/api/query/", {
             variant="outline"
             size="sm"
             className="ml-auto gap-1.5 text-sm"
+            onClick={handleLogOut}
           >
-            <Share className="size-3.5" />
-            Share
+            Log out
           </Button>
         </header>
         <main className="grid flex-1 gap-4 overflow-auto p-4 md:grid-cols-2 lg:grid-cols-3">
@@ -481,7 +402,7 @@ const queryResponse = await api.post("/api/query/", {
             x-chunk="dashboard-03-chunk-0"
           >
             <form className="grid w-full items-start gap-6">
-            <MySideBar initialChats={chats} onSelectChat={handleSelectChat}></MySideBar>
+            <MySideBar initialChats={chats} onSelectChat={handleSelectChat} ></MySideBar>
             </form>
           </div>
 
@@ -502,7 +423,7 @@ const queryResponse = await api.post("/api/query/", {
                   Configure the settings for the model and messages.
                 </DrawerDescription>
               </DrawerHeader>
-              <form className="grid w-full items-start gap-6 overflow-auto p-4 pt-0">
+              <form className="grid w-full items-start gap-6 overflow-auto p-4 pt-0" onSubmit={updateChat}>
                 <fieldset className="grid gap-6 rounded-lg border p-4">
                   <legend className="-ml-1 px-1 text-sm font-medium">
                     Settings
@@ -575,6 +496,7 @@ const queryResponse = await api.post("/api/query/", {
                       id="length-of-chunk"
                       type="number"
                       placeholder="500"
+                      value={chunks}
                       onChange={handleInputChunks}
                     />
                   </div>
@@ -586,6 +508,7 @@ const queryResponse = await api.post("/api/query/", {
                     id="number-of-close-results"
                     type="number"
                     placeholder="1"
+                    value={numOfResults}
                     onChange={handleInputNumOfResults}
                   />
                 </fieldset>
@@ -614,7 +537,7 @@ const queryResponse = await api.post("/api/query/", {
                     ></FileUploader>
                     <div className="mt-4">
                       <ul className="overflow-x-auto">
-                        {fileList.map((fileName, index) => (
+                        {(fileList || []).map((fileName, index) => (
                           <li
                             key={index}
                             className="list-none p-0 m-0 flex flex-wrap w-20"
@@ -625,22 +548,26 @@ const queryResponse = await api.post("/api/query/", {
                       </ul>
                     </div>
 
-                   
                   </div>
+                  
                 </fieldset>
+          
+                <Button type="submit" size="sm" className=" gap-1 text-lg ">Submit Configuration  </Button> 
+                 
               </form>
             </DrawerContent>
 
 
           </Drawer>
               </Badge>
-              {messagesList.map((msg, index) =>
-                msg.type === "request" ? (
-                  <MessageRequest key={index} text={msg.content} />
-                ) : (
-                  <MessageResponse key={index} text={msg.content} />
-                )
-              )}
+              {(messagesList || []).map((msg, index) =>
+  msg.message_type === "request" ? (
+    <MessageRequest key={index} text={msg.content} />
+  ) : (
+    <MessageResponse key={index} text={msg.content} />
+  )
+)}
+
               <div className="flex-1" />
             </ScrollArea>
             <form
@@ -687,5 +614,6 @@ const queryResponse = await api.post("/api/query/", {
         </main>
       </div>
     </div>
+    </>
   );
 }

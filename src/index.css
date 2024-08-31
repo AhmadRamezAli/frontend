@@ -161,3 +161,35 @@
   background-color: #28a745; /* Green button background */
   color: white;
 }
+
+
+.animated-text {
+  font-family: 'Arial', sans-serif; /* Choose a font you like */
+  font-size: 24px; /* Adjust font size */
+  color: #000; /* Text color */
+  white-space: nowrap;
+  overflow: hidden;
+  border-right: .15em solid orange; /* Cursor effect */
+  animation: typing 5s steps(40, end), blink-caret .75s step-end infinite, rewriting 10s linear infinite;
+}
+.text-wrapper {
+  display: flex;
+
+ /* Adjust height as needed */
+ 
+}
+
+@keyframes typing {
+  from { width: 0; }
+  to { width: 100%; }
+}
+
+@keyframes blink-caret {
+  from, to { border-color: transparent; }
+  50% { border-color: black; }
+}
+
+@keyframes rewriting {
+  0% { opacity: 1; }
+  100% { opacity: 0; }
+}
