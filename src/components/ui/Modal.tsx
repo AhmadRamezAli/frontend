@@ -1,12 +1,10 @@
 import React, { useState } from 'react';
-import './index.css';
-import axios from 'axios';
+import '../../index.css';
 
+import { addChat } from '../../APIs/addChat.tsx';
 export function Modal({ isOpen, setOpen }) {
   const [chatName, setChatName] = useState('');
-  const api = axios.create({
-    baseURL: "http://127.0.0.1:8000",
-  });
+
 
   const handleAddChat = async () => {
     console.log('Chat Name before API call:', chatName);  // Debugging line
@@ -15,17 +13,7 @@ export function Modal({ isOpen, setOpen }) {
       try {
       
         // Send the request to the API
-        const queryResponse = await api.post("/chat/add/", {
-          title: chatName,
-          created_at: new Date().toISOString(),
-          
-        }, {
-          headers: {
-            Authorization: `bearer ${sessionStorage.getItem("token")}`, // Add the token to the request headers
-          },
-        
-        });
-
+        const queryResponse = await addChat(chatName);
         const newChat = queryResponse.data;
 
         // Clear the input and close the modal

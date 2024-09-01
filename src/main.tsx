@@ -8,6 +8,7 @@ import { Dashboard } from './Dashboard.tsx';
 import { Home } from './Home.tsx';
 import { Login } from './Login.tsx';
 import { Signup } from './Signup.tsx';
+import { height } from '@mui/system';
 
 const Root = () => {
   const [token, setToken] = useState('');
@@ -18,7 +19,7 @@ const Root = () => {
 
   return (
     <StrictMode>
-      <TooltipProvider> {/* Wrap with TooltipProvider */}
+      <TooltipProvider > {/* Wrap with TooltipProvider */}
         <Router>
           <Routes>
             

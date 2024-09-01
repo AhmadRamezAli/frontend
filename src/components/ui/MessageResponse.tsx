@@ -6,7 +6,7 @@ const iconClasses = "h-8 w-8 rounded-full";
 
 export function MessageResponse({text}) {
   return (
-    <div className="flex items-end  space-x-2 mt-4">
+    <div className="flex items-end  space-x-2 mt-4 m-3">
       <img
         aria-hidden="true"
         alt="user-avatar"

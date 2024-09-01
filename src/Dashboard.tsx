@@ -17,7 +17,7 @@ import {
   Turtle,
   MessageSquareText
 } from "lucide-react";
-import { FileUploader } from "./FileUploader";
+import { FileUploader } from "./components/ui/FileUploader.tsx";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -43,17 +43,20 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import React, { useState, useEffect } from "react";
-import axios from "axios";
+import React, { useState, useEffect ,useRef } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { MessageRequest } from "./MessageRequest.tsx";
-import { MessageResponse } from "./MessageResponse.tsx";
-import { UploadFile } from "./UploadFile";
-import { MySideBar } from "./MySideBar.tsx";
+import { MessageRequest } from "./components/ui/MessageRequest.tsx";
+import { MessageResponse } from "./components/ui/MessageResponse.tsx";
+import { UploadFile } from "./components/ui/UploadFile.tsx";
+import { MySideBar } from "./components/ui/MySideBar.tsx";
 import './index.css'
-import { Sidebar } from "flowbite-react";
-import{ErrorModal} from './ErrorModal.tsx';
+import{ErrorModal} from './components/ui/ErrorModal.tsx';
 import { useNavigate } from 'react-router-dom';
+import{getAllChats} from './APIs/getAllChats.tsx';
+import{getAllModels} from './APIs/getAllModels.tsx';
+import { updateConfiguration } from "./APIs/updateConfiguration.tsx";
+import {updateFiles}from './APIs/updateFiles.tsx';
+import { addMessage } from "./APIs/addMessage.tsx";
 // Function to compare two arrays
 function areArraysNotEqual(arr1, arr2) {
   // Check if lengths are different
@@ -89,11 +92,20 @@ export function Dashboard() {
   const [showErrorModal, setShowErrorModal] = useState(false);
   const [prefile,setPrefile]=useState([]);
   const[title,setTitle]=useState('');
-  let responseContent;
+  const[models,setModels]=useState([]);
+  const[description,setDescription]=useState([]);
+  const[selectedModel,setSelectedModel]=useState("");
+  const scrollAreaRef = useRef(null);
 
-  const api = axios.create({
-    baseURL: "http://127.0.0.1:8000",
-  });
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+
+  useEffect(() => {
+    if (scrollAreaRef.current) {
+      scrollAreaRef.current.scrollTop = scrollAreaRef.current.scrollHeight;
+    }
+  }, [messagesList]);
+
+
   const handleFileChange = (event) => {
     setSelectedFile(event.target.files[0]); // Get the first file selected
   };
@@ -109,14 +121,11 @@ export function Dashboard() {
     setQuestion(e.target.value);
     console.log(question);
   }; 
+
   useEffect(() => {
     const fetchChats = async () => {
       try {
-        const chatRequest = await api.get("/user/chats", {
-          headers: {
-            Authorization: `bearer ${sessionStorage.getItem("token")}`, // Add the token to the request headers
-          },
-        });
+        const chatRequest =await getAllChats();
         console.log(chatRequest);
         setChats(chatRequest.data.chats); // Store the chat titles and IDs
         
@@ -124,6 +133,18 @@ export function Dashboard() {
       } catch (error) {
         
       }
+      try {
+        const modelRequest = await getAllModels();
+        const modelNames = modelRequest.data.models.map(model => model.name);
+        const modelDescriptions = modelRequest.data.models.map(model => model.description);
+      
+        setModels(modelNames);
+        setDescription(modelDescriptions);
+      } catch (error) {
+        
+      }
+
+
     };
 
     fetchChats();
@@ -139,6 +160,10 @@ export function Dashboard() {
     setTitle(selectedChat['title']);
     // Update messagesList with messages from the selected chat
   };
+  const handleSelectedModel = (value) => {
+    setSelectedModel(value);
+    console.log("Selected model:",value);  // This will log the selected model's name
+  };
 
 const handleLogOut=()=>{
 sessionStorage.clear("token");
@@ -148,11 +173,11 @@ navigate('/');
   const updateChat = async (event) => {
     event.preventDefault();
     const fileArray = Array.from(files);
-       if (!files.length) {
+       if (!fileList.length) {
       alert("Please select a file first.");
       return;
     }
-    
+    setIsDrawerOpen(false);
     console.log(
       "Selected files:",
       fileArray.map((file) => file.name)
@@ -165,14 +190,7 @@ navigate('/');
     try {
       console.log(chunks);
       console.log(numOfResults);
-      const uploadResponse = await api.post(`/chat/${chatId}/update`, {
-        chunks:chunks,
-        numofresults:numOfResults
-      }, {
-        headers: {
-          Authorization: `bearer ${sessionStorage.getItem("token")}`,
-        },
-      });
+      const uploadResponse = await updateConfiguration(chatId,chunks,numOfResults,selectedModel);
 
       console.log("Files uploaded successfully:", uploadResponse.data);
       
@@ -188,12 +206,7 @@ navigate('/');
         const formData = new FormData();
         newFiles.forEach((file) => formData.append("files", file));
 
-        const uploadResponse = await api.post(`/chat/${chatId}/updatefile`, formData, {
-          headers: {
-            "Content-Type": "multipart/form-data",
-            Authorization: `bearer ${sessionStorage.getItem("token")}`,
-          },
-        });
+        const uploadResponse = await updateFiles(chatId,formData);
 
         console.log("Files uploaded successfully:", uploadResponse.data);
         
@@ -218,19 +231,7 @@ navigate('/');
         { content: question, message_type: "request" }
       ]);
       
-const queryResponse = await api.post(`/chat/${chatId}/add_message`, {
-  
-  // Send as an array of strings
-  content:question,
-  message_type:"request",
-  message_time: new Date(),
-
-}, {
-  headers: {
-    Authorization: `bearer ${sessionStorage.getItem("token")}`,
-  },
-});
-    
+const queryResponse = await addMessage(chatId,question);
       // const responseContent = queryResponse.data.message;
       // setResponseMessage(responseContent);
 
@@ -248,16 +249,17 @@ const queryResponse = await api.post(`/chat/${chatId}/add_message`, {
 
   return (
     <>
+    
     {showErrorModal&&<ErrorModal/>}
-    <div className="grid h-screen w-full pl-[56px]">
-      <aside className="inset-y fixed  left-0 z-20 flex h-full flex-col border-r">
+    <div className="grid flex h-screen w-full pl-[30px] pb-0">
+      <aside className="inset-y fixed  left-0 z-20 flex h-screen flex-col border-r">
         <div className="border-b p-2">
           <Button variant="outline" size="icon" aria-label="Home">
             <Triangle className="size-5 fill-foreground" />
           </Button>
         </div>
         <nav className="grid gap-1 p-2">
-          <Tooltip>
+          {/* <Tooltip>
             <TooltipTrigger asChild>
               <Button
                 variant="ghost"
@@ -271,67 +273,9 @@ const queryResponse = await api.post(`/chat/${chatId}/add_message`, {
             <TooltipContent side="right" sideOffset={5}>
               Playground
             </TooltipContent>
-          </Tooltip>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="rounded-lg"
-                aria-label="Models"
-              >
-                <Bot className="size-5" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="right" sideOffset={5}>
-              Models
-            </TooltipContent>
-          </Tooltip>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="rounded-lg"
-                aria-label="API"
-              >
-                <Code2 className="size-5" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="right" sideOffset={5}>
-              API
-            </TooltipContent>
-          </Tooltip>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="rounded-lg"
-                aria-label="Documentation"
-              >
-                <Book className="size-5" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="right" sideOffset={5}>
-              Documentation
-            </TooltipContent>
-          </Tooltip>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="rounded-lg"
-                aria-label="Settings"
-              >
-                <Settings2 className="size-5" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent side="right" sideOffset={5}>
-              Settings
-            </TooltipContent>
-          </Tooltip>
+          </Tooltip> */}
+          
+      
         </nav>
         <nav className="mt-auto grid gap-1 p-2">
           <Tooltip>
@@ -366,7 +310,7 @@ const queryResponse = await api.post(`/chat/${chatId}/add_message`, {
           </Tooltip>
         </nav>
       </aside>
-      <div className="flex flex-col">
+      <div className="flex h-screen flex-col">
         <header className="sticky top-0 z-10 flex h-[57px] items-center gap-1 border-b bg-background px-4">
         <img 
         src="src/assets/DALL·E 2024-08-25 01.06.39 - A minimalistic app logo featuring an Axolotl, illustrated in black and white. The Axolotl is stylized with simple, clean lines and is shown reading a .jpg"
@@ -381,9 +325,10 @@ const queryResponse = await api.post(`/chat/${chatId}/add_message`, {
                 <span className="sr-only">Settings</span>
               </Button>
             </DrawerTrigger>
-            <DrawerContent className="max-h-[80vh]">
+            <DrawerContent className="max-h-[1vh]">
+
             <MySideBar initialChats={chats} onSelectChat={handleSelectChat} ></MySideBar>
-                          </DrawerContent>
+            </DrawerContent>
 
 
           </Drawer>
@@ -396,23 +341,24 @@ const queryResponse = await api.post(`/chat/${chatId}/add_message`, {
             Log out
           </Button>
         </header>
-        <main className="grid flex-1 gap-4 overflow-auto p-4 md:grid-cols-2 lg:grid-cols-3">
+        <main className="grid flex-1 h-20 gap-4 overflow-auto pl-4 md:grid-cols-2 lg:grid-cols-3">
           <div
             className="relative hidden flex-col items-start gap-8 md:flex"
             x-chunk="dashboard-03-chunk-0"
           >
             <form className="grid w-full items-start gap-6">
+
             <MySideBar initialChats={chats} onSelectChat={handleSelectChat} ></MySideBar>
             </form>
           </div>
 
-          <div className="relative flex h-full max-h-[85vh] flex-col rounded-xl bg-muted/50 p-4 lg:col-span-2">
-            <ScrollArea className="h-full w-full rounded-md  overflow-auto">
-              <Badge variant="outline" className=" left-3 top-3  items-end ">
-              <Drawer>
-            <DrawerTrigger asChild>
-              <Button variant="ghost" size="icon" >
-                <Settings className="size-4" />
+          <div className="relative flex h-[660px]  flex-col rounded-xl bg-muted/50 p-4 lg:col-span-2">
+            <ScrollArea ref={scrollAreaRef} className="h-[660px] w-full rounded-md  overflow-auto ">
+              <Badge variant="outline" className=" left-3 top-3 border-0 items-end ">
+              <Drawer open={isDrawerOpen} onOpenChange={setIsDrawerOpen}>
+            <DrawerTrigger asChild >
+              <Button  variant="ghost" size="icon" >
+                <Settings className="size-4 fixed" />
                 <span className="sr-only">Settings</span>
               </Button>
             </DrawerTrigger>
@@ -430,65 +376,31 @@ const queryResponse = await api.post(`/chat/${chatId}/add_message`, {
                   </legend>
                   <div className="grid gap-3">
                     <Label htmlFor="model">Model</Label>
-                    <Select>
-                      <SelectTrigger
-                        id="model"
-                        className="items-start [&_[data-description]]:hidden"
-                      >
-                        <SelectValue placeholder="Select a model" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="genesis">
-                          <div className="flex items-start gap-3 text-muted-foreground">
-                            <Rabbit className="size-5" />
-                            <div className="grid gap-0.5">
-                              <p>
-                                Neural{" "}
-                                <span className="font-medium text-foreground">
-                                  Genesis
-                                </span>
-                              </p>
-                              <p className="text-xs" data-description>
-                                Our fastest model for general use cases.
-                              </p>
-                            </div>
-                          </div>
-                        </SelectItem>
-                        <SelectItem value="explorer">
-                          <div className="flex items-start gap-3 text-muted-foreground">
-                            <Bird className="size-5" />
-                            <div className="grid gap-0.5">
-                              <p>
-                                Neural{" "}
-                                <span className="font-medium text-foreground">
-                                  Explorer
-                                </span>
-                              </p>
-                              <p className="text-xs" data-description>
-                                Performance and speed for efficiency.
-                              </p>
-                            </div>
-                          </div>
-                        </SelectItem>
-                        <SelectItem value="quantum">
-                          <div className="flex items-start gap-3 text-muted-foreground">
-                            <Turtle className="size-5" />
-                            <div className="grid gap-0.5">
-                              <p>
-                                Neural{" "}
-                                <span className="font-medium text-foreground">
-                                  Quantum
-                                </span>
-                              </p>
-                              <p className="text-xs" data-description>
-                                The most powerful model for complex
-                                computations.
-                              </p>
-                            </div>
-                          </div>
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <Select onValueChange={handleSelectedModel}> {/* Use onValueChange or onChange depending on the library */}
+  <SelectTrigger
+    id="model"
+    className="items-start [&_[data-description]]:hidden"
+    >
+    <SelectValue placeholder="Select a model" />
+  </SelectTrigger>
+  <SelectContent>
+    {models.map((model, index) => (
+      <SelectItem key={model} value={model.toLowerCase()}>
+        <div className="flex items-start gap-3 text-muted-foreground">
+          <div className="grid gap-0.5">
+            <p>
+              <span className="font-medium text-foreground">{model}</span>
+            </p>
+            <p className="text-xs" data-description>
+              {description[index]}
+            </p>
+          </div>
+        </div>
+      </SelectItem>
+    ))}
+  </SelectContent>
+</Select>
+
                   </div>
                   <div className="grid gap-3">
                     <Label htmlFor="length-of-chunk">length of chunk</Label>
@@ -548,11 +460,11 @@ const queryResponse = await api.post(`/chat/${chatId}/add_message`, {
                       </ul>
                     </div>
 
+                <Button type="submit" size="sm" className=" gap-1 text-lg ">Submit Configuration  </Button> 
                   </div>
                   
                 </fieldset>
           
-                <Button type="submit" size="sm" className=" gap-1 text-lg ">Submit Configuration  </Button> 
                  
               </form>
             </DrawerContent>
@@ -586,25 +498,10 @@ const queryResponse = await api.post(`/chat/${chatId}/add_message`, {
                 onChange={handleQuestion}
               />
               <div className="flex items-center p-3 pt-0">
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button variant="ghost" size="icon">
-                      <Paperclip className="size-4" />
-                      <span className="sr-only">Attach file</span>
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent side="top">Attach File</TooltipContent>
+                 <Tooltip>
+         
                 </Tooltip>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button variant="ghost" size="icon">
-                      <Mic className="size-4" />
-                      <span className="sr-only">Use Microphone</span>
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent side="top">Use Microphone</TooltipContent>
-                </Tooltip>
-                <Button type="submit" size="sm" className="ml-auto gap-1.5">
+                <Button type="submit" size="sm" className="ml-auto mb-3 gap-1.5">
                   Send Message
                   <CornerDownLeft className="size-3.5" />
                 </Button>

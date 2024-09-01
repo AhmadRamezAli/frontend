@@ -16,7 +16,7 @@ import {
     Triangle,
     Turtle,
   } from "lucide-react";
-  import { FileUploader } from "./FileUploader";
+  import { FileUploader } from "./components/ui/FileUploader.tsx";
   import { Badge } from "@/components/ui/badge";
   import { Button } from "@/components/ui/button";
   import {
@@ -45,8 +45,8 @@ import {
   import React, { useState, useEffect } from "react";
   import axios from "axios";
   import { ScrollArea } from "@/components/ui/scroll-area";
-  import { MessageRequest } from "./MessageRequest.tsx";
-  import { MessageResponse } from "./MessageResponse.tsx";
+  import { MessageRequest } from "./components/ui/MessageRequest.tsx";
+  import { MessageResponse } from "./components/ui/MessageResponse.tsx";
   import { UploadFile } from "./UploadFile";
   
 export function ChatWindow({ messages }) {

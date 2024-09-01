@@ -10,6 +10,7 @@ import axios from "axios";
 import { useNavigate } from 'react-router-dom';
 import { Link } from 'react-router-dom';
 import { Signup } from './Signup';
+import { loginAPI } from './APIs/loginAPI';
 
 export function Login() {
   const api = axios.create({
@@ -25,14 +26,7 @@ export function Login() {
     e.preventDefault(); // Prevent default form submission
 
     try {
-      const response = await api.post("/users/login", {
-        password:password,
-        email:email
-      }, {
-        headers: {
-          "Content-Type": "application/json",
-        },
-      });
+      const response = await loginAPI(password,email);
 
       
       sessionStorage.setItem("token",response.data)

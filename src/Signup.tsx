@@ -1,12 +1,13 @@
 
 import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardActions } from '@mui/material';
-import axios from "axios";
+
 import { useNavigate } from 'react-router-dom';
 import backgroundImage from './assets/RAG.png';
 import { Login } from './Login';
 import { Dashboard } from './Dashboard';
 import { Link } from 'react-router-dom';
+import { signupAPI } from './APIs/signupAPI';
 // Shared constants for repeated Tailwind class strings
 const CONTAINER_CLASSES = '  p-4 pt-6 md:p-6 lg:p-12';
 const INPUT_CLASSES = 'w-full p-2 pl-10 text-sm text-muted-foreground bg-input border border-border rounded-lg focus:ring-2 focus:ring-ring';
@@ -18,9 +19,7 @@ export function Signup  () {
   const [password, setPassword] = useState('');
   const [checkpassword, setCheckpassword] = useState('');
   const [error, setError] = useState(null);
-  const api = axios.create({
-    baseURL: "http://127.0.0.1:8000",
-  });
+
   const handleSubmit =async (e) => {
     e.preventDefault();
     if (password !== checkpassword) {
@@ -30,14 +29,7 @@ export function Signup  () {
     // TO DO: Implement your sign up logic here
     console.log(`Username: ${username}, Password: ${password}`);
     try {
-        const response = await api.post("/users/signup", {
-          password:password,
-          email:username
-        }, {
-          headers: {
-            "Content-Type": "application/json",
-          },
-        });
+        const response = await signupAPI(password,username);
         
             
               sessionStorage.setItem("token",response.data)

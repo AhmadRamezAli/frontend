@@ -76,10 +76,17 @@
   letter-spacing: 4px;
   margin: 10px;
 }
+.aram{
+  padding-left: 100;
+}
 .chat-item {
-  border-bottom: 1px solid #9e9f9f; /* Light gray line */
+  border-bottom: 1px solid #cccdcd; /* Light gray line */
   padding: 10px 0; /* Add some padding for spacing */
   border-radius: 0;
+}
+.chat-item:hover{
+  background-color: #cccdcd;
+  color: #000;
 }
 /* index.css */
 
